@@ -1,0 +1,122 @@
+---
+title: "Week 4-B Lab"
+author: "Nathan VanHoudnos"
+date: "October 14, 2015"
+output: html_document
+---
+
+# Setup
+
+First, uncomment the following line, and run it with Ctrl-Enter. 
+```{r}
+# install.packages("ElemStatLearn", dependencies = TRUE)
+```
+
+Second, recomment the line by writing a `#` (without the ticks) in front of it. 
+# Prostate example
+
+```{r}
+## Load the data
+library(ElemStatLearn)
+data("prostate")
+str(prostate)
+## Uncomment the following line to learn more
+## help(prostate)
+
+## Extract only the training data
+prostate.train <- subset( prostate, train==TRUE )
+prostate.train$train <- NULL
+
+## Reproduce Figure 1.1
+pairs(prostate.train)
+## Click Zoom to see it better
+```
+
+
+## Question 1 
+
+If the response is `lpsa` (level of prostate specific antigen), which variables seem important? Why? 
+
+ * VARIABLE 1
+ * VARIABLE 2
+ * etc
+ 
+# (cont.)
+
+A simple linear regression is fit with the `lm` command. 
+
+```{r}
+model1 <- lm( lpsa ~ lcavol, data = prostate.train)
+summary( model1 )
+```
+
+One way to see the fit is to plot it.
+```{r}
+plot( lpsa ~ lcavol, data = prostate.train)
+abline( model1 )
+```
+
+## Question 2
+
+What is the equation for the line drawn above? 
+
+* EQUATION GOES HERE
+
+# (cont.)
+
+This doesn't look so bad. Note that we essentially have two pieces of information now:
+```{r}
+## The values predicted by the model: 
+plot( prostate.train$lpsa, fitted(model1), main="Predicted vs Response",
+      ylim=range(prostate.train$lpsa), asp=1)
+
+## And the residuals
+plot( prostate.train$lpsa, residuals(model1),  main="Residuals vs Response",
+      ylim=range(c(residuals(model1), prostate.train$lpsa)), asp=1)
+abline( h = 0)
+
+## By definition, the residuals + the fitted values is the response 
+plot( prostate.train$lpsa, residuals(model1) + fitted(model1),  main="Tautaulogy" )
+
+## Or, if you just want a single word: 
+all.equal(  prostate.train$lpsa, 
+            residuals(model1) + fitted(model1) , 
+            check.names = FALSE )
+```
+
+## Question 3
+There is a pattern in the residuals. Describe it. 
+
+* DESCRIBE THE PATTERN
+
+# (cont.)
+
+So let's fit a series of models
+```{r}
+modelA <- lm( lpsa ~ 1, data=prostate.train ) 
+modelB <- lm( lpsa ~ 1 + lcavol, data=prostate.train ) 
+modelC <- lm( lpsa ~ 1 + lcavol + lweight, data=prostate.train ) 
+coef(modelA)
+coef(modelB)
+coef(modelC)
+```
+
+Note that the coefficients change as others are added to the model. We, can, however, get the multiple regression coefficient as described. Note, however, it depends on the order. 
+
+To get the coefficient for `lcavol`: 
+```{r}
+prostate.train$z <- prostate.train$lcavol - mean( prostate.train$lcavol )
+coef( lm( lpsa ~ -1 + z, data=prostate.train) )
+coef( modelB )
+```
+
+To get the coefficient for `1` we have to do it "backwards":
+```{r}
+prostate.train$z.int <- residuals(lm( rep(1, nrow(prostate.train) ) ~ -1 + lcavol, data=prostate.train ))
+coef( lm( lpsa ~ -1 + z.int, data=prostate.train ))
+coef( modelB  )
+```
+
+So although this is a procedure to do it, this particular algorithm is a bit of a pain. The book talks about how to do it simultaneously using QR decomposition. We'll wave our hands and call that magic for now. 
+
+Open question: how should we choose which things to include in our model? 
