@@ -1,0 +1,130 @@
+  369  git remote -v
+  370  man ls
+  371  ls
+  372  /sscc/opt/airline
+  373  cd /sscc/opt/airline
+  374  ls
+  375  pwd
+  376  du -hc
+  377  du -hs
+  378  du -h
+  379  du -h *
+  380  pwd
+  381  ls
+  382  ls -l
+  383  ls -lh
+  384  ls -l
+  385  ls -lh
+  386  less airlinesmall.csv 
+  387  man less
+  388  less airlinesmall.csv 
+  389  grep MFR airlinesmall.csv 
+  390  grep MFR airlinesmall.csv | wc
+  391  grep ORD airlinesmall.csv | wc
+  392  cd ~
+  393  find . -n
+  394  cd stat301/
+  395  ls
+  396  find . -name '*.Rmd' -exec ls -lh {}\;
+  397  find . -name '*.Rmd' -exec "ls -lh {}\;"
+  398  find . -name '*.Rmd' -exec "ls -lh {} \;"
+  399  find . -name '*.Rmd' -exec ls -lh {} \;
+  400  find . -name '*.Rmd' -exec grep cars {} \;
+  401  find . -name '*.Rmd' -exec grep -n cars {} \;
+  402  man grep
+  403  find . -name '*.Rmd' -exec grep -H cars {} \;
+  404  find . -name '*.Rmd' -exec grep -Hn cars {} \;
+  405  cat ~/.bash_history 
+  406  history
+  407  ls
+  408  git log
+  409  ls
+  410  cd lectures/
+  411  ls
+  412  history | grep ASK
+  413  ls
+  414  cd
+  415  ls
+  416  cd stat301/
+  417  ls
+  418  exit
+  419  cd stat301/
+  420  ls
+  421  cd /sscc/opt/airline
+  422  ls
+  423  ls -l
+  424  ls -lh
+  425  cd
+  426  pwd
+  427  cd/sscc
+  428  cd /sscc
+  429  pwd
+  430  cd /sscc/
+  431  pwd
+  432  cd ~
+  433  ls
+  434  cd /stat301
+  435  cd stat301
+  436  pwd
+  437  cd /
+  438  ls
+  439  cd
+  440  pwd
+  441  ls
+  442  pwd
+  443  cd workspace/
+  444  pwd
+  445  cd stat301
+  446  cd ..
+  447  ls
+  448  cd stat301
+  449  pwd
+  450  cd ..
+  451  pwd
+  452  cd /sscc/opt/airline
+  453  pwd
+  454  ls
+  455  ls -lh | less
+  456  head airlinesmall.csv 
+  457  head -n 4 airlinesmall.csv 
+  458  head -n 1 airlinesmall.csv 
+  459  clear
+  460  head -n 3 airlinesmall.csv 
+  461  ls
+  462  ls -l
+  463  ls -l | less
+  464  less airlinesmall.csv 
+  465  wc airlinesmall.csv 
+  466  grep ORD airlinesmall.csv 
+  467  grep ORD airlinesmall.csv | less
+  468  grep ORD airlinesmall.csv | wc
+  469  grep ORD airlinesmall.csv | wc -l
+  470  grep MFR airlinesmall.csv | wc -l
+  471  cd 
+  472  cd stat301/
+  473  ls
+  474  find . -name "*.Rmd"
+  475  find . -name "*.Rmd" -exec cat {} \;
+  476  find . -name "*.Rmd" -exec cat {} \;| less
+  477  find . -name "*.Rmd" -exec grep cars {} \;
+  478  find . -name "*.Rmd" -exec grep -h cars {} \;
+  479  man grep
+  480  find . -name "*.Rmd" -exec grep -H cars {} \;
+  481  find . -name "*.Rmd" -exec grep -Hn cars {} \;
+  482  cd 
+  483  cd stat301
+  484  git status
+  485  ls
+  486  cd lectures/
+  487  lks
+  488  ls
+  489  mkdir week-3B
+  490  ls
+  491  cd week-3B/
+  492  ls
+  493  history | less
+  494  history | tail -n 150 | head
+  495  history | tail -n 125 | head
+  496  history | tail -n 140 | head
+  497  history | tail -n 130 | head
+  498  history | tail -n 130 > shell.lecture.history.txt
