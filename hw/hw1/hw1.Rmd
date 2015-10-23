@@ -1,0 +1,392 @@
+---
+title: "Homework 1"
+author: "YOUR NAME HERE"
+date: "October 22, 2015"
+output: word_document
+---
+
+# Instructions 
+To prepare for this homework, do the following: 
+
+1. On line 3 of this document, replace "YOUR NAME" with your name. 
+2. Rename this file to "hw1_YourHameHere.Rmd", where YourNameHere is changed to your own name.
+3. Each time you begin a new R session, you must run the setup code below.  
+
+# Setup
+You must run the following code in your R session each time you start R. 
+```{r, echo=FALSE}
+library(ElemStatLearn)
+library(leaps)
+## Note: you may have to uncomment and run the following line. 
+# install.packages("glmnet")
+## After you have run it once, re-comment it! 
+library(glmnet)
+
+data("prostate")
+train <- subset( prostate, train==TRUE )[,1:9]
+test  <- subset( prostate, train=FALSE )[,1:9]
+
+## Online News Popularity 
+news <- read.csv("OnlineNewsPopularity.csv", stringsAsFactors=FALSE)
+news$lshares <- log(news$shares)
+news$shares  <- NULL
+## Remove non-predictive columns
+news$url       <- NULL
+news$timedelta <- NULL
+## Setup test and training 
+set.seed(1)
+news$train <- as.logical(rbinom(nrow(news), size=1, p=.5))
+news.train <- subset(news, train==TRUE)
+news.train$train <- NULL
+news.test <- subset(news, train==FALSE)
+news.test$train <- NULL
+
+## Three useful, if somewhat inscrutable, functions: 
+build.formulas <- function( resp.var, leaps.which.matrix ) {
+  lapply( apply( leaps.which.matrix[,-1], 1, which),
+          function(xx) { 
+            paste( resp.var, '~', paste(names(xx), collapse=" + ")) } )
+}
+leaps.AIC <- function( resp.var, leaps.obj, dataset ) {
+  unlist(lapply(
+    build.formulas(resp.var, summary(leaps.obj)$which ), 
+    function(xx) {AIC(lm(xx, data=dataset))}))
+}
+best.lm <- function( citerion.vector, resp.vector, leaps.obj, dataset) {
+  lm( build.formulas( resp.vector, summary(leaps.obj)$which )[[ 
+   which( citerion.vector == min(citerion.vector)) 
+  ]], data=dataset )  
+}
+```
+
+
+# LEAPS
+
+## Prostate Example
+This is drawn from the `help('prostate')` page. Note that although the code below appears in the Rmd view, it does not appear in the Knitted version because I have added `echo=FALSE, eval=FALSE` as options to the code chunk. 
+```{r, echo=FALSE, eval=FALSE}
+
+# Fit the dataset 
+prostate.leaps     <- regsubsets( lpsa ~ . , data=train, nbest=1, really.big=TRUE )
+## Find out more details by uncommenting the next line and running it. 
+## help(regsubsets)
+##
+## Do this for all the functions you don't already know. 
+
+## What was selected
+summary(prostate.leaps)$which
+
+## Extract RSS, BIC and AIC
+prostate.rss <- summary(prostate.leaps)$rss
+prostate.bic <- summary(prostate.leaps)$bic
+prostate.aic <- leaps.AIC( 'lpsa', prostate.leaps, train)
+
+## Plot RSS
+plot( 1:8, prostate.rss,  main="RSS by subset size",
+      type="b", xlab="subset size", ylab="Residual Sum Square", 
+      col="red2" )
+## Look at the differences 
+prostate.rss - min(prostate.rss)
+
+## Plot BIC
+plot( 1:8, prostate.bic,  main="BIC by subset size",
+      type="b", xlab="subset size", ylab="BIC", 
+      col="red2" )
+prostate.bic - min(prostate.bic)
+
+## Plot AIC
+plot( 1:8, prostate.aic,  main="AIC by subset size",
+      type="b", xlab="subset size", ylab="AIC", 
+      col="red2" )
+prostate.aic - min(prostate.aic)
+
+## Extract the best RSS, BIC and AIC models
+prostate.model.rss <- best.lm( prostate.rss, 'lpsa', prostate.leaps, train)
+prostate.model.bic <- best.lm( prostate.bic, 'lpsa', prostate.leaps, train)
+prostate.model.aic <- best.lm( prostate.aic, 'lpsa', prostate.leaps, train)
+
+## Examine them
+summary( prostate.model.rss ) 
+summary( prostate.model.bic ) 
+summary( prostate.model.aic ) 
+
+## Which performs better on the test data?
+prostate.rss.pred <- predict(prostate.model.rss, newdata = test) 
+mean( (prostate.rss.pred - test$lpsa)^2 )
+plot(test$lpsa, prostate.rss.pred, main="RSS Predictions on test")
+abline(0,1)
+
+prostate.bic.pred <- predict(prostate.model.bic, newdata = test) 
+mean( (prostate.bic.pred - test$lpsa)^2 )
+plot(test$lpsa, prostate.bic.pred, main="BIC Predictions on test")
+abline(0,1)
+
+prostate.aic.pred <- predict(prostate.model.aic, newdata = test) 
+mean( (prostate.aic.pred - test$lpsa)^2 )
+plot(test$lpsa, prostate.aic.pred, main="AIC Predictions on test")
+abline(0,1)
+```
+
+## Activity 1 (20 points)
+
+Recall that best subset selection will only work up to 30 variables or so. To use it, let's trim down the news dataset. I have picked a few variables that **I think**, without any prior information or guidance, may be important. 
+
+You must run the following R code
+```{r}
+news.small <- news[,
+      c("n_tokens_title", "n_tokens_content", "n_unique_tokens",
+        "n_non_stop_words", "n_non_stop_unique_tokens", "num_hrefs", 
+        "num_self_hrefs", "num_imgs", "num_videos", "average_token_length", 
+        "num_keywords", "data_channel_is_lifestyle", "data_channel_is_entertainment", 
+        "data_channel_is_bus", "data_channel_is_socmed", "data_channel_is_tech",
+        "is_weekend", "rate_positive_words", "rate_negative_words", "lshares", "train")]
+
+## Setup the training data
+small.train <- subset(news.small, train==TRUE)
+small.train$train <- NULL
+small.test  <- subset(news.small, train==FALSE)
+small.test$train <- NULL
+```
+
+### Part A
+In the space below, find the best model via leaps when judged by RSS on the training data. Repeat for AIC and BIC. Compare and contrast these three models and guess which will have the lowest mean squared error on the test dataset. 
+
+```{r}
+small.leaps <- regsubsets( lshares ~ ., 
+                           nvmax  = 20,
+                           nbest  = 1, 
+                           method = "exhaustive",
+                           data=small.train)
+
+## Your code here. 
+
+```
+
+Your English words go here. 
+
+### Part B
+After completing Part A, test these three models on the training data. Was your prediction correct? Explain what **may** have happened. 
+
+```{r}
+
+## Your code here
+
+```
+
+Your English words go here. 
+
+
+# Step-wise regression 
+
+## Prostate Example
+Note that although the code below appears in the Rmd view, it does not appear in the Knitted version because I have added `echo=FALSE, eval=FALSE` as options to the code chunk. 
+```{r, echo=FALSE, eval=FALSE}
+# Fit the dataset 
+pstate.null <- lm(lpsa ~ 1, data=train)
+pstate.full <- lm(lpsa ~ ., data=train)
+
+pstate.model.fwd <- step(pstate.null, 
+     scope = list(lower = pstate.null, upper = pstate.full), 
+     direction="forward", trace = FALSE) 
+## Change trace = TRUE to see more detail
+
+pstate.model.bkwd <- step(pstate.full, 
+     scope = list(lower = pstate.null, upper = pstate.full), 
+     direction="backward", trace = FALSE)
+
+pstate.model.both <- step(pstate.full, 
+     scope = list(lower = pstate.null, upper = pstate.full), 
+     direction="both", trace = FALSE)
+
+## What is in each model:
+coef(pstate.model.fwd)
+coef(pstate.model.bkwd)
+coef(pstate.model.both)
+
+## And compare it to the winning model from last activity 
+coef(prostate.model.aic)
+
+## Does the AIC model have all of the fwd coef? 
+(name.sel <- names(coef(prostate.model.aic)) %in% names(coef(pstate.model.fwd)) )
+## Nope. 
+## 
+## Which ones are missing from the prostate model? (The ! means "not".) 
+names(coef(prostate.model.aic))[ ! name.sel ]
+
+## Does the AIC model have all of the bkwd coef? 
+names(coef(prostate.model.aic)) %in% names(coef(pstate.model.bkwd))
+## It does! 
+
+## What are the AIC values?
+AIC(pstate.model.fwd)
+AIC(pstate.model.bkwd)
+AIC(pstate.model.both)
+
+## Which predicts the best?
+pstate.fwd.pred <- predict(pstate.model.fwd, newdata = test) 
+mean( (pstate.fwd.pred - test$lpsa)^2 )
+plot( test$lpsa, pstate.fwd.pred, main="Fwd predictions on test" )
+abline(0,1)
+
+pstate.bkwd.pred <- predict(pstate.model.bkwd, newdata = test) 
+mean( (pstate.bkwd.pred - test$lpsa)^2 )
+plot( test$lpsa, pstate.bkwd.pred, main="Bkwd predictions on test" )
+abline(0,1)
+
+pstate.both.pred <- predict(pstate.model.both, newdata = test) 
+mean( (pstate.both.pred - test$lpsa)^2 )
+plot( test$lpsa, pstate.both.pred, main="Both predictions on test" )
+abline(0,1)
+
+```
+
+## Activity 2 (20 points)
+Use forward and backward selection to find a model using all of the columns instead of merely the ones I selected earlier. Two questions: 
+  
+  1. How do the forward and backward models compare with the best model from Activity 1 (e.g number of variables, common variables, etc.)?
+  2. Are the predictions (on the test data) better for the stepwise models or the Activity 1 model? Why? 
+
+Note that I have added the option `cache=TRUE` to this code chunk. This is because the stepwise search that you will do here is slow. With caching on, you only have to wait for it once, not every time you knit your document. 
+```{r, cache=TRUE}
+#R code goes here. 
+
+```
+
+English words go here. 
+
+
+# Shrinkage methods
+
+## Prostate example: Ridge 
+Note that although the code below appears in the Rmd view, it does not appear in the Knitted version because I have added `echo=FALSE, eval=FALSE` as options to the code chunk. 
+```{r, echo=FALSE, eval=FALSE}
+## We must specify our data as matrices for glmnet
+x.pstate       <- as.matrix(train[,1:8])
+x.pstate.test  <- as.matrix(test[,1:8])
+y.pstate <- train[,9]
+
+## Note that alpha=0 is ridge regression 
+ridge.fit <- glmnet(x.pstate, y.pstate, family = "gaussian", alpha=0)
+plot(ridge.fit, label=TRUE, xvar="norm")
+
+## Look at all of the coefficients...
+## coef(ridge.fit)
+## Note that all of them a shrunkken at first 
+
+## Try cross validation to pick a model 
+## Note that alpha must be zero!
+cvfit = cv.glmnet(x.pstate, y.pstate, family = "gaussian", alpha=0)
+
+plot(cvfit)
+
+## Try the minimum
+cvfit$lambda.min
+## coef(cvfit, s = "lambda.min")
+
+## Try the simplest model that is not statistically significantly different 
+## from the minimum 
+cvfit$lambda.1se
+## coef(cvfit, s = "lambda.1se")
+
+# Check MSE on the predicted models
+pstate.ridge.min.pred <- predict(cvfit, newx = x.pstate.test, s = "lambda.min")
+
+## For comparison: AIC
+mean( (prostate.aic.pred - test$lpsa)^2 )
+mean( (pstate.ridge.min.pred - test$lpsa)^2 )
+## A little better! 
+## Could make a plot here....
+
+pstate.ridge.1se.pred <- predict(cvfit, newx = x.pstate.test, s = "lambda.1se")
+mean( (pstate.ridge.1se.pred - test$lpsa)^2 )
+## Not as good 
+```
+
+## Activity 3 (20 points)
+Try out ridge regression on the news dataset. Compare its predictions with the best stepwise model on test. Did it work better? Why or why not? 
+```{r}
+x      <- as.matrix(news.train[,1:58])
+x.test <- as.matrix(news.test[,1:58])
+y      <- news.train[,59]
+
+## R code here
+
+```
+
+English words here. 
+
+
+## Prostate Example: LASSO
+Note that although the code below appears in the Rmd view, it does not appear in the Knitted version because I have added `echo=FALSE, eval=FALSE` as options to the code chunk. 
+```{r, echo=FALSE, eval=FALSE}
+## We must specify our data as matrices for glmnet
+x.pstate       <- as.matrix(train[,1:8])
+x.pstate.test  <- as.matrix(test[,1:8])
+y.pstate       <- train[,9]
+
+## Note that alpha=1 is lasso regression 
+lasso.fit <- glmnet(x.pstate, y.pstate, family = "gaussian", alpha=1)
+plot(lasso.fit, label=TRUE, xvar="norm")
+
+## Look at all of the coefficients...
+## coef(lasso.fit)
+## Note that all of them a shrunkken at first 
+
+## Try cross validation to pick a model 
+## Note that alpha must be zero!
+cvfit = cv.glmnet(x.pstate, y.pstate, family = "gaussian", alpha=1)
+
+plot(cvfit)
+
+## Try the minimum
+cvfit$lambda.min
+## coef(cvfit, s = "lambda.min")
+
+## Try the simplest model that is not statistically significantly different 
+## from the minimum 
+cvfit$lambda.1se
+## coef(cvfit, s = "lambda.1se")
+
+# Check MSE on the predicted models
+pstate.lasso.min.pred <- predict(cvfit, newx = x.pstate.test, s = "lambda.min")
+
+## For comparison: ridge
+mean( (pstate.lasso.min.pred - test$lpsa)^2 )
+mean( (pstate.ridge.min.pred - test$lpsa)^2 )
+## A lasso does a little better! 
+## Could make a plot here....
+
+pstate.ridge.1se.pred <- predict(cvfit, newx = x.pstate.test, s = "lambda.1se")
+mean( (pstate.ridge.1se.pred - test$lpsa)^2 )
+## Not as good 
+```
+
+
+## Activity 4 (20 points)
+Try out the LASSO. Compare its predictions with the best models thus far. Does it work better? Why or why not? 
+```{r}
+x      <- as.matrix(news.train[,1:58])
+x.test <- as.matrix(news.test[,1:58])
+y      <- news.train[,59]
+
+## R code goes here
+```
+
+English words go here. 
+
+
+# Summary Activity (20 pts)
+
+Now that you have analyzed the news dataset in several ways, pretend that you are in the following scenario. You work for Mashable.com. Your boss had handed you these data and asked you to learn something about what factors affect how often articles are shared on social media. 
+
+You've made a lot of graphs. You've generated a lot of numbers. Use the space below to answer the following two questions: 
+
+> Thanks, YOUR NAME, for analyzing these data. We would like to increase the number of shares on social media. If we have a candidate list of 100 articles to put on our front page, how should we chose the 10 to promote there? 
+
+Note: In answering the question, you can assume that you have the full set variables, i.e. there are effectively 100 new rows of the data. 
+
+Your Answer here. 
+
+> Thanks, YOUR NAME, that was a thoughtful and undoubtably correct answer. One more question, do you think that the method you proposed will still work in 5 years? If so, why? If not, what should we do to stay on top of the game? 
+
+Your Answer here. 
