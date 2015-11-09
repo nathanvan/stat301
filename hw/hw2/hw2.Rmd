@@ -1,0 +1,211 @@
+---
+title: "Homework 2"
+author: "YOUR NAME"
+date: "November 22, 2015"
+output: word_document
+---
+
+# Instructions 
+To prepare for this homework, do the following: 
+
+1. On line 3 of this document, replace "YOUR NAME" with your name. 
+2. Rename this file to "hw2_YourHameHere.Rmd", where YourNameHere is changed to your own name.
+3. Each time you begin a new R session, you must run the setup code below.  
+
+# Setup
+You must run the following code in your R session each time you start R. You will likely need to install `pROC`.  
+```{r}
+library(ElemStatLearn)
+library(glmnet)
+library(MASS)
+# install.packages('pROC')
+library(pROC)
+
+## South African Heart Disease
+data("SAheart")
+set.seed(1)
+SAheart$train <- as.factor( rbinom(size=1, n=nrow(SAheart), p=2/3)  )
+levels(SAheart$train) <- c("test", 'train')
+sa.train <- SAheart[SAheart$train == 'train',  - ncol(SAheart)]
+sa.test  <- SAheart[SAheart$train == 'test',  - ncol(SAheart)]
+
+## German Credit
+credit <- read.csv("http://www.biz.uiowa.edu/faculty/jledolter/DataMining/germancredit.csv")
+credit$installment <- factor(credit$installment, ordered = TRUE )
+credit$residence <- factor(credit$residence, ordered = TRUE )
+credit$cards <- factor(credit$cards, ordered = TRUE )
+credit$liable <- factor(credit$liable - 1)
+
+set.seed(1)
+credit$train <- as.factor( rbinom(size=1, n=nrow(credit), p=1/2)  )
+levels(credit$train) <- c("test", 'train')
+cr.train <- credit[credit$train == 'train',  - ncol(credit)]
+cr.test  <- credit[credit$train == 'test',  - ncol(credit)]
+
+## Two useful, if inscrutable, functions. 
+addAUC <- function(x.pred, x.true, col, add=TRUE, ...) {
+  roc.curve <- roc(x.true, as.numeric(x.pred))
+  plot( roc.curve, add=add, col=col, ... )  
+  auc(roc.curve) 
+}
+compare.predictions <- function(pred.list, truth) {
+  x.col <- rainbow(length(pred.list))
+  addAUC(pred.list[[1]], truth, x.col[1], FALSE, main="ROC Comparison" )
+  all.auc <- lapply(seq_along(pred.list), 
+                 function(ii) { 
+                   addAUC(pred.list[[ii]], truth, col=x.col[ii])})
+  names(all.auc) <- names(pred.list)
+  legend( 'bottomright', 
+          paste( names(pred.list), " AUC=", round(unlist(all.auc),2)),
+          lwd=1,
+          col=x.col)
+  all.auc
+}
+```
+
+# Activity 1 (70 points)
+
+The R Syntax for LDA, QDA, and logistic regression on the full models is as follows:
+```{r}
+#help(lda)
+sa.lda.full          <- lda( chd ~ ., data=sa.train)
+print( sa.lda.full )
+
+#help(qda)
+sa.qda.full          <- qda( chd ~ ., data=sa.train)
+print( sa.qda.full )
+
+#help(glm)
+sa.lr.full           <- glm(chd ~ ., data=sa.train, family="binomial" )
+summary( sa.lr.full)
+```
+
+## Part A (5 points)
+
+The R functions for LDA, QDA, and logistic regression all give very different output. Which set of output is more interpretable to you and why do you find this to be so? Which variables seem important for predicting heart disease and why do you find this to be so?
+
+ANSWER HERE. 
+
+## Part B (10 points)
+Using  your notes from Project 1, do a backwards stepwise search from `sa.lr.full` towards a new, intercept-only logistic regression model. Save the model as `sa.lr.bkwd`. Interpret the resulting model by examining the coefficients. 
+
+```{r}
+# R CODE HERE
+
+```
+
+ANSWER HERE
+
+## Part C (10 points)
+Using  your notes from Project 1, and the help page for `glmnet`, fit a LASSO penalized logistic regression and chose two models via cross validation (the minimum and the one-standard-error model). In a few sentences, compare and contrast the two models by comparing the coefficients. 
+
+```{r}
+# N.B. 1: Look at ?model.matrix for details. 
+# N.B. 2: the [,-1] term removes the intercerpt because glmnet already includes it.
+X.sa.train <- model.matrix( chd ~ ., data=sa.train)[, -1]
+X.sa.test  <- model.matrix( chd ~ ., data=sa.test)[, -1]
+Y.sa.train <- factor( sa.train$chd )
+
+## R code here
+
+## N.B. 3: 
+## If you save your model as sa.cv.fit, this is a simple way to compare
+## the coefficients. 
+## cbind( 
+##   coef(sa.cv.fit, s = "lambda.min"),
+##   coef(sa.cv.fit, s = "lambda.1se") )
+```
+
+ANSWER HERE
+
+## Part D (5 points)
+The following code compares the performance of the six models (LDA, QDA, logistic regression, backwards-stepwise logistic regression, and the two LASSO logistic regression models) on the training data. It graphs as Receiver Operating Characteristic curve (ROC curve), which has the property that better classifiers curve towards the upper left corner. A single statistic that summarizes an ROC curve is the area under the curve (AUC). The higher the AUC the better the classifier. 
+
+For the training data, which model performs the best? To justify your answer, write a sentence or two explaining how this best model is different from all of the others. Which model do you expect will perform the best on the test data and why?
+
+```{r}
+## We will store the predictions in a list so that we can graph them easily. 
+sa.pred.list <- list()
+
+#help(predict.lda)
+sa.pred.list[['lda.full']] <- predict(sa.lda.full, newdata = sa.train)$class 
+
+#help(predict.qda)
+sa.pred.list[['qda.full']]   <- predict(sa.qda.full, newdata = sa.train)$class 
+
+#help(predict.glm)
+sa.pred.list[['lr.full']] <- round(predict.glm(sa.lr.full, newdata = sa.train, 
+                                       type='response'), 0)
+
+## Uncoment the following code after you have created `sa.lr.bkwd`
+##
+## sa.pred.list[['lr.bkwd']] <- round(predict.glm(sa.lr.bkwd, newdata = sa.train, 
+##                                       type='response'), 0)
+
+## Uncomment the following code after you have created `sa.cv.fit`
+##
+## help(predict.cv.glmnet)
+## sa.pred.list[['cv.min']]<- sa.cv.min.pred <- predict(sa.cv.fit, 
+##                           newx = X.sa.train, s = "lambda.min",
+##                                   type="class")
+## sa.pred.list[['cv.1se']] <- sa.cv.1se.pred <- predict(sa.cv.fit, 
+##                           newx = X.sa.train, s = "lambda.1se",
+##                                  type="class")
+
+
+#pROC implementation 
+compare.predictions( sa.pred.list, sa.train$chd)
+```
+
+ANSWER HERE
+
+## Part E (10 points)
+Which model performs the best on the test data? Show your work.
+
+```{r}
+# R code here
+```
+
+## Part F (20 points)
+LDA and logistic regression can approximate QDA if we expand the initial space to include square predictor terms. Use the code below to fit a LASSO logistic regression with quadratic terms. 
+
+Which predicts better on the test data, the LASSO with only linear terms or the LASSO with squared terms? Examine the coefficients of both models to explain why they do or do not differ. Compare this with the performance of QDA. 
+
+```{r}
+# Making the square trms is a bit of a pain
+# N.B. see ?formula for details
+sa.sqterms <- paste(
+  paste( "I(",names(sa.train)[-c(5,10)],"^2)", sep=""),
+  collapse="+" )
+
+X2.sa.train <- model.matrix( 
+     formula( paste("chd ~ . + ", sa.sqterms)),
+    data=sa.train)[, -1]
+X2.sa.test <- model.matrix( 
+     formula( paste("chd ~ . + ", sa.sqterms)),
+    data=sa.test)[, -1]
+
+## R code here
+
+## N.B.
+## If you save your model as sa.cv2.fit, this is a simple way to compare
+## the coefficients between the two models. The `rep(0,8)` pads the linear 
+## term only LASSO fit with zeros to accomodate the square terms in the 
+## second model. 
+## 
+## cbind( coef(sa.cv2.fit, s = "lambda.min"),
+##       rbind( coef(sa.cv.fit, s = "lambda.min"), rep(0,8) ) )
+```
+
+ANSWER HERE
+
+## Part G ( 10 points)
+Given what you have found thus far, which model would you choose and why?
+
+ANSWER HERE 
+
+# Activity 3 (80 points)
+
+Find the best classifier for the `credit` dataset. You are attempting to classify `Default`. Show your work and justify your final answer. 
+
+You may find it helpful to read dataset description [https://archive.ics.uci.edu/ml/datasets/Statlog+(German+Credit+Data)](here). 
